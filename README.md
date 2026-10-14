@@ -121,7 +121,7 @@ The limits are those of the host record, the COBOL copybook `TSKREC`, so that ev
 | `description` | At most 200 characters | `TSK-DESC PIC X(200)` |
 | `status` | `OPEN`, `IN_PROGRESS` or `DONE`; required by `PUT /api/tasks/{id}` | |
 | `assignee` | `null` or a lower-case user id: a letter, then up to 7 letters or digits (`^[a-z][a-z0-9]{0,7}$`) | `TSK-USER PIC X(8)`, upper case on the host |
-| `dueDate` | `null` or an ISO date | `TSK-DUE-DATE PIC 9(8)`, `00000000` for none |
+| `dueDate` | `null` or an ISO date from `0001-01-01` to `9999-12-31` | `TSK-DUE-DATE PIC 9(8)`: `YYYYMMDD`, `00000000` for none |
 
 Errors are `application/problem+json` (RFC 9457). A 400 for invalid fields adds `errors`, a message per field, in English whatever the client's `Accept-Language`; this also covers values of the wrong type, such as `"dueDate": "31.10.2026"`. A body that is not JSON gets a 400 without `errors`, an unknown task a 404, and an unexpected error a 500 without details.
 

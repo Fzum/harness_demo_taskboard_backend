@@ -42,6 +42,8 @@ class TaskApiTest {
   private static final String USER_ID_MESSAGE =
       "must be a lower-case user id: a letter, then up to 7 letters or digits";
 
+  private static final String HOST_DATE_MESSAGE = "must be a date from 0001-01-01 to 9999-12-31";
+
   private final MockMvcTester mvc;
   private final TaskApi api;
   private final JdbcTemplate jdbc;
@@ -253,6 +255,27 @@ class TaskApiTest {
         .bodyJson()
         .extractingPath("$.errors")
         .isEqualTo(Map.of("assignee", USER_ID_MESSAGE));
+  }
+
+  // 20261031 is the host's YYYYMMDD as a JSON number, which Jackson reads as days since 1970.
+  @ParameterizedTest
+  @ValueSource(strings = {"\"0000-12-31\"", "\"+10000-01-01\"", "20261031"})
+  void aDueDateTheHostCannotStoreIsRejected(String dueDate) {
+    long id = api.createTask();
+    String update =
+        "{\"title\": \"Check the letter\", \"status\": \"OPEN\", \"dueDate\": %s}"
+            .formatted(dueDate);
+
+    assertThat(api.post("/api/tasks", titleAndDueDate(dueDate)))
+        .hasStatus(HttpStatus.BAD_REQUEST)
+        .bodyJson()
+        .extractingPath("$.errors")
+        .isEqualTo(Map.of("dueDate", HOST_DATE_MESSAGE));
+    assertThat(api.put("/api/tasks/" + id, update))
+        .hasStatus(HttpStatus.BAD_REQUEST)
+        .bodyJson()
+        .extractingPath("$.errors")
+        .isEqualTo(Map.of("dueDate", HOST_DATE_MESSAGE));
   }
 
   @Test

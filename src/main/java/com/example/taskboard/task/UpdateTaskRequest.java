@@ -16,4 +16,4 @@ record UpdateTaskRequest(
     @Size(max = 200, message = "must be at most {max} characters") String description,
     @NotNull(message = "must not be null") TaskStatus status,
     @UserId String assignee,
-    LocalDate dueDate) {}
+    @HostDate LocalDate dueDate) {}

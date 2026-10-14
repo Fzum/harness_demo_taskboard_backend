@@ -123,7 +123,7 @@ The limits are those of the host record, the COBOL copybook `TSKREC`, so that ev
 | `assignee` | `null` or a lower-case user id: a letter, then up to 7 letters or digits (`^[a-z][a-z0-9]{0,7}$`) | `TSK-USER PIC X(8)`, upper case on the host |
 | `dueDate` | `null` or an ISO date | `TSK-DUE-DATE PIC 9(8)`, `00000000` for none |
 
-Errors are `application/problem+json` (RFC 9457). A 400 for invalid fields adds `errors`, a message per field; this also covers values of the wrong type, such as `"dueDate": "31.10.2026"`. A body that is not JSON gets a 400 without `errors`, an unknown task a 404, and an unexpected error a 500 without details.
+Errors are `application/problem+json` (RFC 9457). A 400 for invalid fields adds `errors`, a message per field, in English whatever the client's `Accept-Language`; this also covers values of the wrong type, such as `"dueDate": "31.10.2026"`. A body that is not JSON gets a 400 without `errors`, an unknown task a 404, and an unexpected error a 500 without details.
 
 ### Examples
 
@@ -425,7 +425,7 @@ Try it:
 
 | Test | What it covers |
 |---|---|
-| `TaskApiTest` | The HTTP API: status codes, `Location`, the task's JSON, sorting, replacing and clearing fields, assigning, deleting, 404s, the validation of every field, values of the wrong type, problem details, UTC in the database |
+| `TaskApiTest` | The HTTP API: status codes, `Location`, the task's JSON, sorting, replacing and clearing fields, assigning, deleting, 404s, the validation of every field, values of the wrong type, messages in English whatever the client's language, problem details, UTC in the database |
 | `TaskOutboxTest` | The outbox guarantee: one event per change with its type, `PENDING`, `0` attempts and the full snapshot; no event for a rejected request, a rollback or a failed commit; no outbox write outside a transaction; the row lock, and a change that waited for it stamped after the change it waited for; `HOST_ID` and the processing columns left to the datasync |
 | `TaskSyncStatusTest` | The sync status as the datasync processes or fails events, the latest event deciding, a host task without events, and `GET /api/tasks` in a single SQL query |
 | `SyncStatusTest` | The mapping from outbox status to sync status, as a plain unit test |

@@ -7,11 +7,13 @@ import java.time.LocalDate;
 
 /**
  * Body of PUT /api/tasks/{id}: replaces every editable field, and null (or a missing key) clears
- * one. The limits are those of {@link CreateTaskRequest}.
+ * one. The limits and messages are those of {@link CreateTaskRequest}.
  */
 record UpdateTaskRequest(
-    @NotBlank @Size(max = 40, message = "must be at most {max} characters") String title,
+    @NotBlank(message = "must not be blank")
+        @Size(max = 40, message = "must be at most {max} characters")
+        String title,
     @Size(max = 200, message = "must be at most {max} characters") String description,
-    @NotNull TaskStatus status,
+    @NotNull(message = "must not be null") TaskStatus status,
     @UserId String assignee,
     LocalDate dueDate) {}

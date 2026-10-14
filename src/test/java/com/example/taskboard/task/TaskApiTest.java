@@ -41,10 +41,12 @@ class TaskApiTest {
   private static final String USER_ID_MESSAGE =
       "must be a lower-case user id: a letter, then up to 7 letters or digits";
 
+  private final MockMvcTester mvc;
   private final TaskApi api;
   private final JdbcTemplate jdbc;
 
   TaskApiTest(MockMvcTester mvc, JdbcTemplate jdbc) {
+    this.mvc = mvc;
     this.api = new TaskApi(mvc);
     this.jdbc = jdbc;
   }
@@ -257,6 +259,22 @@ class TaskApiTest {
     long id = api.createTask();
 
     assertThat(api.put("/api/tasks/" + id, "{\"description\": \"Second reminder\"}"))
+        .hasStatus(HttpStatus.BAD_REQUEST)
+        .bodyJson()
+        .extractingPath("$.errors")
+        .isEqualTo(Map.of("title", "must not be blank", "status", "must not be null"));
+  }
+
+  @Test
+  void theMessagesAreEnglishWhateverLanguageTheClientPrefers() {
+    long id = api.createTask();
+
+    assertThat(
+            mvc.put()
+                .uri("/api/tasks/" + id)
+                .header(HttpHeaders.ACCEPT_LANGUAGE, "de-DE,de;q=0.9")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"description\": \"Second reminder\"}"))
         .hasStatus(HttpStatus.BAD_REQUEST)
         .bodyJson()
         .extractingPath("$.errors")

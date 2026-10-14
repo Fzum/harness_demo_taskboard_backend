@@ -31,13 +31,13 @@ The backend never talks to the host. The datasync loads the host's tasks into `T
 
 You need a JDK 21. Nothing else: the Maven wrapper downloads Maven 3.10, and the database runs in memory, so there is no Docker and no database to install.
 
-Build: compile, run the tests, check the formatting and package the jar.
+Build it, which compiles, runs the tests, checks the formatting and packages the jar:
 
 ```sh
 ./mvnw verify
 ```
 
-Run the backend on http://localhost:8080, with the shared database on port 9092:
+Run it on http://localhost:8080, with the shared database on port 9092:
 
 ```sh
 ./mvnw spring-boot:run
@@ -431,7 +431,7 @@ What each test class covers:
 
 | Test | What it covers |
 |---|---|
-| `TaskApiTest` | The HTTP API: status codes, `Location`, the task's JSON, sorting, replacing and clearing fields, assigning, deleting, 404s, the validation of every field, values of the wrong type, messages in English whatever the client's language, problem details, UTC in the database |
+| `TaskApiTest` | The HTTP API: status codes, `Location`, the task's JSON, sorting, replacing and clearing fields, assigning, deleting, 404s, the validation of every field, values of the wrong type, messages in English whatever the client's language, problem details, UTC timestamps and exact due dates in the database |
 | `TaskOutboxTest` | The outbox guarantee: one event per change with its type, `PENDING`, `0` attempts and the full snapshot; no event for a rejected request, a rollback or a failed commit; no outbox write outside a transaction; the row lock, and a change that waited for it stamped after the change it waited for; `HOST_ID` and the processing columns left to the datasync |
 | `TaskSyncStatusTest` | The sync status as the datasync processes or fails events, the latest event deciding, a host task without events, and `GET /api/tasks` in a single SQL query |
 | `SyncStatusTest` | The mapping from outbox status to sync status, as a plain unit test |

@@ -312,7 +312,7 @@ Guarantees:
 - **Same transaction.** The change of `TASK` and its event are committed together or not at all: a change that is rolled back or fails at commit leaves no event behind. `Outbox.append` refuses to run outside a transaction.
 - **One event per change.** Every successful `POST`, `PUT` or `DELETE` writes exactly one event. A rejected request (400, 404) writes none.
 - **Full snapshots.** An event carries everything the host needs, so relaying it takes nothing but the event, and the latest event of a task holds its latest state.
-- **In order per task.** A change locks the task's row until it commits (`SELECT ... FOR UPDATE`), so changes to one task run one after another and their events' IDs follow the order of the changes. The datasync relays in ID order.
+- **In order per task.** A change locks the task's row until it commits (`SELECT ... FOR UPDATE`) and takes its time only once it holds the lock, so changes to one task run one after another, and their events' IDs and `occurredAt` follow the order of the changes. The datasync relays in ID order.
 - **At-least-once delivery.** The datasync polls the pending events every 30 seconds and retries a failing one; an event can reach the host more than once, which a snapshot tolerates. After five failed attempts it marks the event `FAILED`: a host inconsistency until someone retries it.
 
 A change on its way to the host:
@@ -426,7 +426,7 @@ Try it:
 | Test | What it covers |
 |---|---|
 | `TaskApiTest` | The HTTP API: status codes, `Location`, the task's JSON, sorting, replacing and clearing fields, assigning, deleting, 404s, the validation of every field, values of the wrong type, problem details, UTC in the database |
-| `TaskOutboxTest` | The outbox guarantee: one event per change with its type, `PENDING`, `0` attempts and the full snapshot; no event for a rejected request, a rollback or a failed commit; no outbox write outside a transaction; the row lock; `HOST_ID` and the processing columns left to the datasync |
+| `TaskOutboxTest` | The outbox guarantee: one event per change with its type, `PENDING`, `0` attempts and the full snapshot; no event for a rejected request, a rollback or a failed commit; no outbox write outside a transaction; the row lock, and a change that waited for it stamped after the change it waited for; `HOST_ID` and the processing columns left to the datasync |
 | `TaskSyncStatusTest` | The sync status as the datasync processes or fails events, the latest event deciding, a host task without events, and `GET /api/tasks` in a single SQL query |
 | `SyncStatusTest` | The mapping from outbox status to sync status, as a plain unit test |
 | `MigrationTest` | The migrations on a fresh H2 in DB2 mode: every column, type, default, key and index of the shared schema |

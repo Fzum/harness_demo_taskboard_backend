@@ -8,6 +8,7 @@ import static com.example.taskboard.task.TaskApi.text;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
+import static org.awaitility.Awaitility.await;
 
 import com.example.taskboard.outbox.Outbox;
 import com.example.taskboard.task.OutboxTable.Event;
@@ -22,6 +23,9 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import org.h2.api.ErrorCode;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Value;
@@ -245,6 +249,26 @@ class TaskOutboxTest {
   }
 
   @Test
+  void aChangeThatWaitsForTheLockIsStampedOnceItHasIt() throws Exception {
+    long id = api.createTask();
+    AtomicReference<Instant> released = new AtomicReference<>();
+
+    CompletableFuture<TaskResponse> waiting =
+        transaction.execute(
+            status -> {
+              service.assign(id, "amueller");
+              CompletableFuture<TaskResponse> next =
+                  CompletableFuture.supplyAsync(() -> service.assign(id, "bkoch"));
+              await().until(this::aSessionWaitsForALock);
+              released.set(Instant.now().truncatedTo(ChronoUnit.MILLIS));
+              return next;
+            });
+
+    // Stamped before it waited, the second change would look older than the first one.
+    assertThat(waiting.get(10, TimeUnit.SECONDS).updatedAt()).isAfterOrEqualTo(released.get());
+  }
+
+  @Test
   void changesLeaveWhatTheDatasyncWroteAlone() {
     long id = api.createTask();
     String hostKey = "T%09d".formatted(id);
@@ -279,5 +303,12 @@ class TaskOutboxTest {
       statement.execute("SET LOCK_TIMEOUT 100");
       statement.executeUpdate("UPDATE TASK SET ASSIGNEE = 'bkoch' WHERE ID = " + id);
     }
+  }
+
+  private boolean aSessionWaitsForALock() {
+    return jdbc.queryForObject(
+            "SELECT COUNT(*) FROM INFORMATION_SCHEMA.SESSIONS WHERE BLOCKER_ID IS NOT NULL",
+            Integer.class)
+        > 0;
   }
 }

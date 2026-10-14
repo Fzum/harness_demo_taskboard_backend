@@ -54,8 +54,8 @@ class TaskService {
   }
 
   public TaskResponse update(long id, UpdateTaskRequest request) {
-    Instant now = now();
     Task task = lock(id);
+    Instant now = now();
     task.update(
         request.title(),
         request.description(),
@@ -68,8 +68,8 @@ class TaskService {
   }
 
   public TaskResponse assign(long id, String assignee) {
-    Instant now = now();
     Task task = lock(id);
+    Instant now = now();
     task.assign(assignee, now);
     appendEvent(TaskEventType.TASK_UPDATED, task, now);
     return pending(task);
@@ -85,6 +85,10 @@ class TaskService {
     outbox.append(AGGREGATE_TYPE, task.getId(), type.name(), TaskSnapshot.of(task, occurredAt));
   }
 
+  /**
+   * The task to change, locked until the transaction ends. A change takes its time only once it
+   * holds the lock, so the changes of one task are stamped in the order they are made.
+   */
   private Task lock(long id) {
     return tasks.findLockedById(id).orElseThrow(() -> new TaskNotFoundException(id));
   }

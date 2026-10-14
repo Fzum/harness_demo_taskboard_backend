@@ -139,6 +139,24 @@ class TaskApiTest {
   }
 
   @Test
+  void updateClearsAFieldWhoseKeyIsMissing() {
+    long id = id(api.create(DIRECT_DEBIT));
+
+    MvcTestResult result =
+        api.put(
+            "/api/tasks/" + id,
+            "{\"title\": \"Clarify returned direct debit\", \"status\": \"DONE\"}");
+
+    assertThat(result)
+        .hasStatusOk()
+        .bodyJson()
+        .isLenientlyEqualTo(
+            """
+            {"title": "Clarify returned direct debit", "description": null, "status": "DONE",
+             "assignee": null, "dueDate": null}""");
+  }
+
+  @Test
   void assigneeAssignsAndUnassignsTheTask() {
     long id = id(api.create(DIRECT_DEBIT));
 

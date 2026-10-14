@@ -52,7 +52,7 @@ class TaskOutboxTest {
   private final OutboxTable outbox;
   private final JdbcTemplate jdbc;
   private final TaskService service;
-  private final Outbox outboxBean;
+  private final Outbox transactionalOutbox;
   private final TransactionTemplate transaction;
   private final String databaseUrl;
 
@@ -60,14 +60,14 @@ class TaskOutboxTest {
       MockMvcTester mvc,
       JdbcTemplate jdbc,
       TaskService service,
-      Outbox outboxBean,
+      Outbox transactionalOutbox,
       TransactionTemplate transaction,
       @Value("${spring.datasource.url}") String databaseUrl) {
     this.api = new TaskApi(mvc);
     this.outbox = new OutboxTable(jdbc);
     this.jdbc = jdbc;
     this.service = service;
-    this.outboxBean = outboxBean;
+    this.transactionalOutbox = transactionalOutbox;
     this.transaction = transaction;
     this.databaseUrl = databaseUrl;
   }
@@ -220,7 +220,7 @@ class TaskOutboxTest {
 
   @Test
   void theOutboxOnlyWritesInTheTransactionOfAChange() {
-    assertThatThrownBy(() -> outboxBean.append("TASK", 1, "TASK_UPDATED", Map.of()))
+    assertThatThrownBy(() -> transactionalOutbox.append("TASK", 1, "TASK_UPDATED", Map.of()))
         .isInstanceOf(IllegalTransactionStateException.class);
   }
 

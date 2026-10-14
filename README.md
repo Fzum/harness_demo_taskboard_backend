@@ -73,7 +73,7 @@ For example, to run the backend on its own without sharing its database:
 TASKBOARD_H2_TCP_ENABLED=false ./mvnw spring-boot:run
 ```
 
-**Database.** At start-up Flyway applies the migrations in `src/main/resources/db/migration`, then Hibernate checks that the entities fit the schema (`spring.jpa.hibernate.ddl-auto=validate`); it never changes the schema itself. `TIMESTAMP` columns hold UTC, whatever the JVM's time zone: Hibernate maps `Instant` to `TIMESTAMP` and writes it in UTC (the two `spring.jpa.properties.hibernate` settings).
+**Database.** At start-up Flyway applies the migrations in `src/main/resources/db/migration`, then Hibernate checks that the entities fit the schema (`spring.jpa.hibernate.ddl-auto=validate`); it never changes the schema itself. `TIMESTAMP` columns hold UTC, whatever the JVM's time zone: Hibernate maps `Instant` to `TIMESTAMP` and writes it in UTC (`preferred_instant_jdbc_type` and `jdbc.time_zone` in `spring.jpa.properties.hibernate`). It passes dates to JDBC as `java.time` values (`java_time_use_direct_jdbc`), so that every due date the host can store, back to `0001-01-01`, is stored as given.
 
 **TCP server.** Once the schema is migrated, the backend starts an H2 TCP server that serves its in-memory database to other processes on the same machine. The datasync connects with `jdbc:h2:tcp://localhost:9092/mem:taskboard;MODE=DB2`, user `sa` and an empty password. The server accepts local connections only and exists for local runs; the tests never open port 9092.
 

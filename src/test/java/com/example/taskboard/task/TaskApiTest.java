@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.within;
 
 import com.jayway.jsonpath.JsonPath;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
@@ -334,6 +335,19 @@ class TaskApiTest {
         .isEqualTo(LocalDateTime.ofInstant(instant(created, "$.createdAt"), ZoneOffset.UTC));
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {"0001-01-01", "2026-10-31", "9999-12-31"})
+  void aDueDateIsStoredAsGivenFromTheHostsFirstDayToItsLast(String dueDate) {
+    long id = id(api.create(titleAndDueDate("\"" + dueDate + "\"")));
+
+    assertThat(jdbc.queryForObject("SELECT DUE_DATE FROM TASK WHERE ID = ?", LocalDate.class, id))
+        .isEqualTo(dueDate);
+    assertThat(api.get("/api/tasks/" + id))
+        .bodyJson()
+        .extractingPath("$.dueDate")
+        .isEqualTo(dueDate);
+  }
+
   private static void assertNotFound(MvcTestResult result, String uri) {
     assertThat(result)
         .hasStatus(HttpStatus.NOT_FOUND)
@@ -355,5 +369,9 @@ class TaskApiTest {
 
   private static String titleAndAssignee(String assignee) {
     return "{\"title\": \"Check the letter\", \"assignee\": \"%s\"}".formatted(assignee);
+  }
+
+  private static String titleAndDueDate(String dueDateJson) {
+    return "{\"title\": \"Check the letter\", \"dueDate\": %s}".formatted(dueDateJson);
   }
 }

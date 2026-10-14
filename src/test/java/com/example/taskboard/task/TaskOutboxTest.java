@@ -296,6 +296,23 @@ class TaskOutboxTest {
         .isEqualTo(hostKey);
   }
 
+  @Test
+  void aChangeNeverWritesTheHostId() {
+    long id = api.createTask();
+    String hostKey = "T%09d".formatted(id);
+
+    transaction.executeWithoutResult(
+        status -> {
+          service.assign(id, "bkoch");
+          // The host key arrives after the change has read the task. Only the change's own
+          // transaction can store it now: the row lock keeps the datasync waiting.
+          jdbc.update("UPDATE TASK SET HOST_ID = ? WHERE ID = ?", hostKey, id);
+        });
+
+    assertThat(jdbc.queryForObject("SELECT HOST_ID FROM TASK WHERE ID = ?", String.class, id))
+        .isEqualTo(hostKey);
+  }
+
   /** A concurrent change of the task: another connection, which gives up after 100 ms. */
   private void assignFromAnotherConnection(long id) throws SQLException {
     try (Connection connection = DriverManager.getConnection(databaseUrl, "sa", "");

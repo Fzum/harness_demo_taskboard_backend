@@ -31,9 +31,16 @@ The backend never talks to the host. The datasync loads the host's tasks into `T
 
 You need a JDK 21. Nothing else: the Maven wrapper downloads Maven 3.10, and the database runs in memory, so there is no Docker and no database to install.
 
+Build: compile, run the tests, check the formatting and package the jar.
+
 ```sh
-./mvnw verify            # compile, run the tests, check the formatting, build the jar
-./mvnw spring-boot:run   # start the backend on http://localhost:8080
+./mvnw verify
+```
+
+Run the backend on http://localhost:8080, with the shared database on port 9092:
+
+```sh
+./mvnw spring-boot:run
 ```
 
 The backend is ready when its health endpoint says so; check from a second terminal:
@@ -109,7 +116,7 @@ JSON over HTTP at `http://localhost:8080`, without authentication. The Taskboard
 | `source` | `TASKBOARD` or `HOST` | Created in the Taskboard or on the host |
 | `hostId` | string or `null` | The task's key on the host, set by the datasync; `null` until a new task has reached the host |
 | `syncStatus` | `SYNCED`, `PENDING` or `FAILED` | Whether the host has caught up, see [Sync status](#sync-status) |
-| `createdAt`, `updatedAt` | ISO-8601 UTC instant | Millisecond precision, for example `2026-10-14T14:33:32.302Z` |
+| `createdAt`, `updatedAt` | ISO-8601 UTC instant | For example `2026-10-14T14:33:32.302Z`. The backend stamps its changes to the millisecond; a zero fraction is left out (`2026-10-14T14:33:32Z`) |
 
 ### Validation
 
@@ -414,14 +421,13 @@ Try it:
 
 ## Testing
 
-```sh
-# all tests
-./mvnw test
-# one test class
-./mvnw test -Dtest=TaskOutboxTest
-# one test
-./mvnw test -Dtest='TaskOutboxTest#aRolledBackChangeLeavesNeitherTheTaskNorItsEvent'
-```
+| Run | Command |
+|---|---|
+| All tests | `./mvnw test` |
+| One test class | `./mvnw test -Dtest=TaskOutboxTest` |
+| One test | `./mvnw test -Dtest='TaskOutboxTest#aRolledBackChangeLeavesNeitherTheTaskNorItsEvent'` |
+
+What each test class covers:
 
 | Test | What it covers |
 |---|---|

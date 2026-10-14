@@ -40,6 +40,7 @@ class ApiExceptionHandler extends ResponseEntityExceptionHandler {
       HttpHeaders headers,
       HttpStatusCode status,
       WebRequest request) {
+    // Sorted, so that two messages for one field always come in the same order.
     Map<String, String> errors = new TreeMap<>();
     ex.getBindingResult().getFieldErrors().stream()
         .sorted(Comparator.comparing(FieldError::getDefaultMessage))

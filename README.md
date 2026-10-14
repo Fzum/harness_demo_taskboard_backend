@@ -130,6 +130,8 @@ The limits are those of the host record, the COBOL copybook `TSKREC`, so that ev
 | `assignee` | `null` or a lower-case user id: a letter, then up to 7 letters or digits (`^[a-z][a-z0-9]{0,7}$`) | `TSK-USER PIC X(8)`, upper case on the host |
 | `dueDate` | `null` or an ISO date from `0001-01-01` to `9999-12-31` | `TSK-DUE-DATE PIC 9(8)`: `YYYYMMDD`, `00000000` for none |
 
+The title and the description are stored the way the host keeps them: on one line (control characters such as line breaks become spaces), without leading or trailing spaces, and a blank description as `null`. The rules apply to the text as stored, which the answer shows: `"  Call back\nabout the claim "` is stored as `"Call back about the claim"`. The datasync loads the host's texts the same way, so a task reads the same after its round trip to the host.
+
 Errors are `application/problem+json` (RFC 9457). A 400 for invalid fields adds `errors`, a message per field, in English whatever the client's `Accept-Language`; this also covers values of the wrong type, such as `"dueDate": "31.10.2026"`. A body that is not JSON gets a 400 without `errors`, an unknown task a 404, and an unexpected error a 500 without details.
 
 ### Examples
@@ -431,8 +433,8 @@ What each test class covers:
 
 | Test | What it covers |
 |---|---|
-| `TaskApiTest` | The HTTP API: status codes, `Location`, the task's JSON, sorting, replacing and clearing fields, assigning, deleting, 404s, the validation of every field, values of the wrong type, messages in English whatever the client's language, problem details, UTC timestamps and exact due dates in the database |
-| `TaskOutboxTest` | The outbox guarantee: one event per change with its type, `PENDING`, `0` attempts and the full snapshot; no event for a rejected request, a rollback or a failed commit; no outbox write outside a transaction; the row lock, and a change that waited for it stamped after the change it waited for; `HOST_ID` and the processing columns left to the datasync |
+| `TaskApiTest` | The HTTP API: status codes, `Location`, the task's JSON, sorting, replacing and clearing fields, assigning, deleting, 404s, the validation of every field, texts stored the way the host keeps them, values of the wrong type, messages in English whatever the client's language, problem details, UTC timestamps and exact due dates in the database |
+| `TaskOutboxTest` | The outbox guarantee: one event per change with its type, `PENDING`, `0` attempts and the full snapshot, `null` for an empty text; no event for a rejected request, a rollback or a failed commit; no outbox write outside a transaction; the row lock, and a change that waited for it stamped after the change it waited for; `HOST_ID` and the processing columns left to the datasync |
 | `TaskSyncStatusTest` | The sync status as the datasync processes or fails events, the latest event deciding, a host task without events, and `GET /api/tasks` in a single SQL query |
 | `SyncStatusTest` | The mapping from outbox status to sync status, as a plain unit test |
 | `MigrationTest` | The migrations on a fresh H2 in DB2 mode: every column, type, default, key and index of the shared schema |

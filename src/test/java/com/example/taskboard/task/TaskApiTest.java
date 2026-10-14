@@ -204,7 +204,14 @@ class TaskApiTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"{}", "{\"title\": null}", "{\"title\": \"\"}", "{\"title\": \"   \"}"})
+  @ValueSource(
+      strings = {
+        "{}",
+        "{\"title\": null}",
+        "{\"title\": \"\"}",
+        "{\"title\": \"   \"}",
+        "{\"title\": \"\\t\\u0085\\n\"}"
+      })
   void createNeedsATitle(String body) {
     assertThat(api.post("/api/tasks", body))
         .hasStatus(HttpStatus.BAD_REQUEST)
@@ -231,6 +238,45 @@ class TaskApiTest {
             Map.of(
                 "title", "must be at most 40 characters",
                 "description", "must be at most 200 characters"));
+  }
+
+  // A host record is one line padded with spaces, and the datasync loads a host text trimmed and a
+  // blank one as null: stored that way, a task reads the same after its round trip to the host.
+  @Test
+  void textsAreStoredTheWayTheHostKeepsThem() {
+    MvcTestResult created =
+        api.create(
+            """
+            {"title": "  Call back\\nabout the claim  ", "description": " \\t "}""");
+
+    assertThat(created)
+        .bodyJson()
+        .isLenientlyEqualTo(
+            """
+            {"title": "Call back about the claim", "description": null}""");
+    assertThat(
+            api.put(
+                "/api/tasks/" + id(created),
+                """
+                {"title": "Call back about the claim",
+                 "description": " Asked for a call\\r\\u0085after 4 pm ",
+                 "status": "OPEN"}"""))
+        .hasStatusOk()
+        .bodyJson()
+        .isLenientlyEqualTo(
+            """
+            {"description": "Asked for a call  after 4 pm"}""");
+  }
+
+  @Test
+  void theLimitsApplyToTheTextsAsStored() {
+    String title = "t".repeat(40);
+
+    assertThat(api.post("/api/tasks", "{\"title\": \"  %s\\n\"}".formatted(title)))
+        .hasStatus(HttpStatus.CREATED)
+        .bodyJson()
+        .extractingPath("$.title")
+        .isEqualTo(title);
   }
 
   @ParameterizedTest

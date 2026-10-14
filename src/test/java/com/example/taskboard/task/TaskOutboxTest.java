@@ -136,6 +136,20 @@ class TaskOutboxTest {
   }
 
   @Test
+  void anEventCarriesTheTextsAsStoredWithNullForAnEmptyOne() {
+    long id =
+        id(
+            api.create(
+                """
+                {"title": " Call back\\nabout the claim ", "description": ""}"""));
+
+    assertThat(new JsonContent(outbox.latestOf(id).payload()))
+        .isLenientlyEqualTo(
+            """
+            {"title": "Call back about the claim", "description": null}""");
+  }
+
+  @Test
   void assigningAndUnassigningAreUpdates() {
     long id = api.createTask();
 

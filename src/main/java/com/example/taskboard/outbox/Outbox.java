@@ -7,9 +7,9 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * The transactional outbox. A change appends its event in its own transaction, so the event is
- * committed together with the change or not at all. The datasync polls OUTBOX_EVENT and relays the
- * pending events to the host.
+ * The transactional outbox. A change appends its event in the transaction that makes the change, so
+ * the event is committed together with the change or not at all. The datasync polls OUTBOX_EVENT
+ * and relays the pending events to the host.
  */
 @Component
 public class Outbox {

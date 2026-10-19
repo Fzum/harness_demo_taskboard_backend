@@ -96,7 +96,9 @@ class TaskOverdueApiTest {
     MvcTestResult edited =
         api.put(
             "/api/tasks/" + id,
-            "{\"title\": \"Overdue check\", \"dueDate\": \"" + LocalDate.now().plusDays(5) + "\"}");
+            "{\"title\": \"Overdue check\", \"status\": \"OPEN\", \"dueDate\": \""
+                + LocalDate.now().plusDays(5)
+                + "\"}");
 
     assertThat(edited).hasStatus(HttpStatus.OK);
     assertThat(edited).bodyJson().extractingPath("$.overdue").isEqualTo(false);

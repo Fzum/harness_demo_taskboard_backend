@@ -72,6 +72,7 @@ class TaskApiTest {
              "status": "OPEN",
              "assignee": "amueller",
              "dueDate": "2026-10-31",
+             "overdue": false,
              "source": "TASKBOARD",
              "hostId": null,
              "syncStatus": "PENDING",

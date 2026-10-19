@@ -113,6 +113,7 @@ JSON over HTTP at `http://localhost:8080`, without authentication. The Taskboard
 | `status` | `OPEN`, `IN_PROGRESS` or `DONE` | Where the work stands |
 | `assignee` | string or `null` | The user id of the clerk who works on it |
 | `dueDate` | ISO date or `null` | For example `2026-10-31` |
+| `overdue` | boolean | Computed, never `null`: `true` iff `dueDate` is before today (server local date), whatever the `status`; `false` without a due date |
 | `source` | `TASKBOARD` or `HOST` | Created in the Taskboard or on the host |
 | `hostId` | string or `null` | The task's key on the host, set by the datasync; `null` until a new task has reached the host |
 | `syncStatus` | `SYNCED`, `PENDING` or `FAILED` | Whether the host has caught up, see [Sync status](#sync-status) |

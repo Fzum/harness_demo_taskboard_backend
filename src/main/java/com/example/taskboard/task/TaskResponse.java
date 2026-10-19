@@ -15,9 +15,10 @@ record TaskResponse(
     String hostId,
     SyncStatus syncStatus,
     Instant createdAt,
-    Instant updatedAt) {
+    Instant updatedAt,
+    boolean overdue) {
 
-  static TaskResponse of(Task task, SyncStatus syncStatus) {
+  static TaskResponse of(Task task, SyncStatus syncStatus, LocalDate today) {
     return new TaskResponse(
         task.getId(),
         task.getTitle(),
@@ -29,10 +30,11 @@ record TaskResponse(
         task.getHostId(),
         syncStatus,
         task.getCreatedAt(),
-        task.getUpdatedAt());
+        task.getUpdatedAt(),
+        task.getDueDate() != null && task.getDueDate().isBefore(today));
   }
 
-  static TaskResponse of(TaskWithSyncStatus row) {
-    return of(row.task(), row.syncStatus());
+  static TaskResponse of(TaskWithSyncStatus row, LocalDate today) {
+    return of(row.task(), row.syncStatus(), today);
   }
 }

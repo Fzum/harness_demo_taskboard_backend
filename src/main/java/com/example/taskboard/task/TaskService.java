@@ -1,7 +1,9 @@
 package com.example.taskboard.task;
 
 import com.example.taskboard.outbox.Outbox;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -20,22 +22,26 @@ class TaskService {
 
   private final TaskRepository tasks;
   private final Outbox outbox;
+  private final Clock clock;
 
-  TaskService(TaskRepository tasks, Outbox outbox) {
+  TaskService(TaskRepository tasks, Outbox outbox, Clock clock) {
+    this.clock = clock;
     this.tasks = tasks;
     this.outbox = outbox;
   }
 
   @Transactional(readOnly = true)
   public List<TaskResponse> list() {
-    return tasks.findAllWithSyncStatus().stream().map(TaskResponse::of).toList();
+    return tasks.findAllWithSyncStatus().stream()
+        .map(row -> TaskResponse.of(row, today()))
+        .toList();
   }
 
   @Transactional(readOnly = true)
   public TaskResponse get(long id) {
     return tasks
         .findWithSyncStatusById(id)
-        .map(TaskResponse::of)
+        .map(row -> TaskResponse.of(row, today()))
         .orElseThrow(() -> new TaskNotFoundException(id));
   }
 
@@ -94,12 +100,17 @@ class TaskService {
   }
 
   /** The task's latest event is the one just appended: the host has yet to catch up. */
-  private static TaskResponse pending(Task task) {
-    return TaskResponse.of(task, SyncStatus.PENDING);
+  private TaskResponse pending(Task task) {
+    return TaskResponse.of(task, SyncStatus.PENDING, today());
   }
 
   /** Milliseconds, as the API shows them, so a task reads the same before and after a reload. */
   private static Instant now() {
     return Instant.now().truncatedTo(ChronoUnit.MILLIS);
+  }
+
+  /** The server's current local date, against which a due date is overdue. */
+  private LocalDate today() {
+    return LocalDate.now(clock);
   }
 }

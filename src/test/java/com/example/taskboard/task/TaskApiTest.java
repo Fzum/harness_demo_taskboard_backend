@@ -76,8 +76,13 @@ class TaskApiTest {
              "hostId": null,
              "syncStatus": "PENDING",
              "createdAt": "%s",
-             "updatedAt": "%s"}"""
-                .formatted(id, createdAt, createdAt));
+             "updatedAt": "%s",
+             "overdue": %b}"""
+                .formatted(
+                    id,
+                    createdAt,
+                    createdAt,
+                    LocalDate.parse("2026-10-31").isBefore(LocalDate.now())));
     assertThat(Instant.parse(createdAt)).isCloseTo(Instant.now(), within(1, ChronoUnit.MINUTES));
   }
 

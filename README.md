@@ -113,6 +113,7 @@ JSON over HTTP at `http://localhost:8080`, without authentication. The Taskboard
 | `status` | `OPEN`, `IN_PROGRESS` or `DONE` | Where the work stands |
 | `assignee` | string or `null` | The user id of the clerk who works on it |
 | `dueDate` | ISO date or `null` | For example `2026-10-31` |
+| `overdue` | boolean | Computed, never `null`: `true` if `dueDate` is before the server's current local date, `false` for today, later or no due date. The status is not considered |
 | `source` | `TASKBOARD` or `HOST` | Created in the Taskboard or on the host |
 | `hostId` | string or `null` | The task's key on the host, set by the datasync; `null` until a new task has reached the host |
 | `syncStatus` | `SYNCED`, `PENDING` or `FAILED` | Whether the host has caught up, see [Sync status](#sync-status) |
@@ -154,6 +155,7 @@ The answer is `201` with `Location: /api/tasks/1` and the new task, pending unti
   "status": "OPEN",
   "assignee": "amueller",
   "dueDate": "2026-10-31",
+  "overdue": false,
   "source": "TASKBOARD",
   "hostId": null,
   "syncStatus": "PENDING",
@@ -197,6 +199,7 @@ curl -X PUT http://localhost:8080/api/tasks/1 \
   "status": "IN_PROGRESS",
   "assignee": "amueller",
   "dueDate": "2026-11-15",
+  "overdue": false,
   "source": "TASKBOARD",
   "hostId": null,
   "syncStatus": "PENDING",
@@ -311,6 +314,7 @@ The payload is a full snapshot of the task after the change; for `TASK_DELETED` 
   "status": "IN_PROGRESS",
   "assignee": "amueller",
   "dueDate": "2026-11-15",
+  "overdue": false,
   "source": "TASKBOARD",
   "occurredAt": "2026-10-14T14:33:39.864Z"
 }

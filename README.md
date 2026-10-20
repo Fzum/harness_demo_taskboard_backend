@@ -116,6 +116,7 @@ JSON over HTTP at `http://localhost:8080`, without authentication. The Taskboard
 | `source` | `TASKBOARD` or `HOST` | Created in the Taskboard or on the host |
 | `hostId` | string or `null` | The task's key on the host, set by the datasync; `null` until a new task has reached the host |
 | `syncStatus` | `SYNCED`, `PENDING` or `FAILED` | Whether the host has caught up, see [Sync status](#sync-status) |
+| `overdue` | boolean | Computed on every read, never stored: `true` when `dueDate` is before today (the server's date, in its default time zone) and `false` otherwise, including when `dueDate` is `null`. The status is not considered, so a `DONE` task with a past due date is `true` |
 | `createdAt`, `updatedAt` | ISO-8601 UTC instant | For example `2026-10-14T14:33:32.302Z`. The backend stamps its changes to the millisecond; a zero fraction is left out (`2026-10-14T14:33:32Z`) |
 
 ### Validation
@@ -157,6 +158,7 @@ The answer is `201` with `Location: /api/tasks/1` and the new task, pending unti
   "source": "TASKBOARD",
   "hostId": null,
   "syncStatus": "PENDING",
+  "overdue": false,
   "createdAt": "2026-10-14T14:33:32.302Z",
   "updatedAt": "2026-10-14T14:33:32.302Z"
 }
@@ -176,8 +178,8 @@ The list, sorted by id (one task per line here):
 
 ```json
 [
-  {"id":1,"title":"Clarify returned direct debit","description":"The bank returned the October instalment","status":"OPEN","assignee":"amueller","dueDate":"2026-10-31","source":"TASKBOARD","hostId":null,"syncStatus":"PENDING","createdAt":"2026-10-14T14:33:32.302Z","updatedAt":"2026-10-14T14:33:32.302Z"},
-  {"id":2,"title":"Call back about the claim","description":null,"status":"OPEN","assignee":null,"dueDate":null,"source":"TASKBOARD","hostId":null,"syncStatus":"PENDING","createdAt":"2026-10-14T14:33:32.372Z","updatedAt":"2026-10-14T14:33:32.372Z"}
+  {"id":1,"title":"Clarify returned direct debit","description":"The bank returned the October instalment","status":"OPEN","assignee":"amueller","dueDate":"2026-10-31","source":"TASKBOARD","hostId":null,"syncStatus":"PENDING","overdue":false,"createdAt":"2026-10-14T14:33:32.302Z","updatedAt":"2026-10-14T14:33:32.302Z"},
+  {"id":2,"title":"Call back about the claim","description":null,"status":"OPEN","assignee":null,"dueDate":null,"source":"TASKBOARD","hostId":null,"syncStatus":"PENDING","overdue":false,"createdAt":"2026-10-14T14:33:32.372Z","updatedAt":"2026-10-14T14:33:32.372Z"}
 ]
 ```
 
@@ -200,6 +202,7 @@ curl -X PUT http://localhost:8080/api/tasks/1 \
   "source": "TASKBOARD",
   "hostId": null,
   "syncStatus": "PENDING",
+  "overdue": false,
   "createdAt": "2026-10-14T14:33:32.302Z",
   "updatedAt": "2026-10-14T14:33:39.864Z"
 }

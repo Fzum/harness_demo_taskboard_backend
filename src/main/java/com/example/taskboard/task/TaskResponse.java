@@ -14,6 +14,7 @@ record TaskResponse(
     TaskSource source,
     String hostId,
     SyncStatus syncStatus,
+    boolean overdue,
     Instant createdAt,
     Instant updatedAt) {
 
@@ -28,11 +29,17 @@ record TaskResponse(
         task.getSource(),
         task.getHostId(),
         syncStatus,
+        isOverdue(task.getDueDate()),
         task.getCreatedAt(),
         task.getUpdatedAt());
   }
 
   static TaskResponse of(TaskWithSyncStatus row) {
     return of(row.task(), row.syncStatus());
+  }
+
+  /** Computed on read, whatever the status: the due date lies before today in the JVM's zone. */
+  private static boolean isOverdue(LocalDate dueDate) {
+    return dueDate != null && dueDate.isBefore(LocalDate.now());
   }
 }

@@ -107,6 +107,7 @@ class TaskOutboxTest {
                        "assignee": "amueller",
                        "dueDate": "2026-10-31",
                        "source": "TASKBOARD",
+                       "priority": "MEDIUM",
                        "occurredAt": "%s"}"""
                           .formatted(id, createdAt));
             });
@@ -131,7 +132,7 @@ class TaskOutboxTest {
             """
             {"taskId": %d, "hostId": null, "title": "Clarify returned direct debit",
              "description": null, "status": "DONE", "assignee": "amueller", "dueDate": null,
-             "source": "TASKBOARD", "occurredAt": "%s"}"""
+             "source": "TASKBOARD", "priority": "MEDIUM", "occurredAt": "%s"}"""
                 .formatted(id, text(updated, "$.updatedAt")));
   }
 
@@ -211,7 +212,7 @@ class TaskOutboxTest {
         transaction.execute(
             status -> {
               TaskResponse task =
-                  service.create(new CreateTaskRequest("Rolled back", null, null, null));
+                  service.create(new CreateTaskRequest("Rolled back", null, null, null, null));
               status.setRollbackOnly();
               return task.id();
             });
@@ -227,7 +228,7 @@ class TaskOutboxTest {
     // Past the API's validation: the event is inserted, then the UPDATE of TASK fails at commit,
     // because TITLE is a VARCHAR(40).
     UpdateTaskRequest tooLong =
-        new UpdateTaskRequest("t".repeat(41), null, TaskStatus.DONE, null, null);
+        new UpdateTaskRequest("t".repeat(41), null, TaskStatus.DONE, null, null, null);
 
     assertThatThrownBy(() -> service.update(id, tooLong))
         .isInstanceOf(DataIntegrityViolationException.class);

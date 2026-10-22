@@ -80,6 +80,8 @@ For example, to run the backend on its own without sharing its database:
 TASKBOARD_H2_TCP_ENABLED=false ./mvnw spring-boot:run
 ```
 
+**Enums.** Jackson does not accept numbers for enum values (`spring.jackson.datatype.enum.fail-on-numbers-for-enums`), so `"priority": 1` is a 400 like any other unknown value.
+
 **Database.** At start-up Flyway applies the migrations in `src/main/resources/db/migration`, then Hibernate checks that the entities fit the schema (`spring.jpa.hibernate.ddl-auto=validate`); it never changes the schema itself. `TIMESTAMP` columns hold UTC, whatever the JVM's time zone: Hibernate maps `Instant` to `TIMESTAMP` and writes it in UTC (`preferred_instant_jdbc_type` and `jdbc.time_zone` in `spring.jpa.properties.hibernate`). It passes dates to JDBC as `java.time` values (`java_time_use_direct_jdbc`), so that every due date the host can store, back to `0001-01-01`, is stored as given.
 
 **TCP server.** Once the schema is migrated, the backend starts an H2 TCP server that serves its in-memory database to other processes on the same machine. The datasync connects with `jdbc:h2:tcp://localhost:9092/mem:taskboard;MODE=DB2`, user `sa` and an empty password. The server accepts local connections only and exists for local runs; the tests never open port 9092.
@@ -96,12 +98,12 @@ JSON over HTTP at `http://localhost:8080`, without authentication. The Taskboard
 |---|---|---|---|---|
 | `GET /api/tasks` | | 200, every task, sorted by id | | |
 | `GET /api/tasks/{id}` | | 200, the task | 404 | |
-| `POST /api/tasks` | `title`, optional `description`, `assignee`, `dueDate` | 201, the new task, `Location: /api/tasks/{id}` | 400 | `TASK_CREATED` |
-| `PUT /api/tasks/{id}` | `title`, `description`, `status`, `assignee`, `dueDate` | 200, the changed task | 400, 404 | `TASK_UPDATED` |
+| `POST /api/tasks` | `title`, optional `description`, `assignee`, `dueDate`, `priority` | 201, the new task, `Location: /api/tasks/{id}` | 400 | `TASK_CREATED` |
+| `PUT /api/tasks/{id}` | `title`, `description`, `status`, `assignee`, `dueDate`, optional `priority` | 200, the changed task | 400, 404 | `TASK_UPDATED` |
 | `PUT /api/tasks/{id}/assignee` | `assignee` | 200, the changed task | 400, 404 | `TASK_UPDATED` |
 | `DELETE /api/tasks/{id}` | | 204 | 404 | `TASK_DELETED` |
 
-`POST` creates an `OPEN` task with source `TASKBOARD`. `PUT /api/tasks/{id}` replaces every editable field: `null`, or a missing key, clears a field. `PUT /api/tasks/{id}/assignee` changes nothing but the assignee; `{"assignee": null}` unassigns the task. Every successful `POST`, `PUT` or `DELETE` writes exactly one outbox event; a rejected request writes none.
+`POST` creates an `OPEN` task with source `TASKBOARD`. `PUT /api/tasks/{id}` replaces every editable field: `null`, or a missing key, clears a field, except `priority`, which keeps its current value. `POST` without a `priority` (or with `null`) creates a `MEDIUM` task. `PUT /api/tasks/{id}/assignee` changes nothing but the assignee; `{"assignee": null}` unassigns the task. Every successful `POST`, `PUT` or `DELETE` writes exactly one outbox event; a rejected request writes none.
 
 ### The task
 
@@ -113,6 +115,7 @@ JSON over HTTP at `http://localhost:8080`, without authentication. The Taskboard
 | `status` | `OPEN`, `IN_PROGRESS` or `DONE` | Where the work stands |
 | `assignee` | string or `null` | The user id of the clerk who works on it |
 | `dueDate` | ISO date or `null` | For example `2026-10-31` |
+| `priority` | `HIGH`, `MEDIUM` or `LOW` | How urgent the task is, never `null`; tasks that existed before the priority was introduced are `MEDIUM`. The datasync maps it to `TSK-PRIO` (`H`, `M`, `L`) on the host |
 | `source` | `TASKBOARD` or `HOST` | Created in the Taskboard or on the host |
 | `hostId` | string or `null` | The task's key on the host, set by the datasync; `null` until a new task has reached the host |
 | `syncStatus` | `SYNCED`, `PENDING` or `FAILED` | Whether the host has caught up, see [Sync status](#sync-status) |
@@ -128,6 +131,7 @@ The limits are those of the host record, the COBOL copybook `TSKREC`, so that ev
 | `description` | At most 200 characters | `TSK-DESC PIC X(200)` |
 | `status` | `OPEN`, `IN_PROGRESS` or `DONE`; required by `PUT /api/tasks/{id}` | |
 | `assignee` | `null` or a lower-case user id: a letter, then up to 7 letters or digits (`^[a-z][a-z0-9]{0,7}$`) | `TSK-USER PIC X(8)`, upper case on the host |
+| `priority` | `null` or one of `HIGH`, `MEDIUM`, `LOW`; anything else is a 400 with `"priority": "must be one of HIGH, MEDIUM, LOW"` | `TSK-PRIO PIC X(01)` |
 | `dueDate` | `null` or an ISO date from `0001-01-01` to `9999-12-31` | `TSK-DUE-DATE PIC 9(8)`: `YYYYMMDD`, `00000000` for none |
 
 The title and the description are stored the way the host keeps them: on one line (control characters such as line breaks become spaces), without leading or trailing spaces, and a blank description as `null`. The rules apply to the text as stored, which the answer shows: `"  Call back\nabout the claim "` is stored as `"Call back about the claim"`. The datasync loads the host's texts the same way, so a task reads the same after its round trip to the host.
@@ -154,6 +158,7 @@ The answer is `201` with `Location: /api/tasks/1` and the new task, pending unti
   "status": "OPEN",
   "assignee": "amueller",
   "dueDate": "2026-10-31",
+  "priority": "MEDIUM",
   "source": "TASKBOARD",
   "hostId": null,
   "syncStatus": "PENDING",
@@ -176,8 +181,8 @@ The list, sorted by id (one task per line here):
 
 ```json
 [
-  {"id":1,"title":"Clarify returned direct debit","description":"The bank returned the October instalment","status":"OPEN","assignee":"amueller","dueDate":"2026-10-31","source":"TASKBOARD","hostId":null,"syncStatus":"PENDING","createdAt":"2026-10-14T14:33:32.302Z","updatedAt":"2026-10-14T14:33:32.302Z"},
-  {"id":2,"title":"Call back about the claim","description":null,"status":"OPEN","assignee":null,"dueDate":null,"source":"TASKBOARD","hostId":null,"syncStatus":"PENDING","createdAt":"2026-10-14T14:33:32.372Z","updatedAt":"2026-10-14T14:33:32.372Z"}
+  {"id":1,"title":"Clarify returned direct debit","description":"The bank returned the October instalment","status":"OPEN","assignee":"amueller","dueDate":"2026-10-31","priority":"MEDIUM","source":"TASKBOARD","hostId":null,"syncStatus":"PENDING","createdAt":"2026-10-14T14:33:32.302Z","updatedAt":"2026-10-14T14:33:32.302Z"},
+  {"id":2,"title":"Call back about the claim","description":null,"status":"OPEN","assignee":null,"dueDate":null,"priority":"MEDIUM","source":"TASKBOARD","hostId":null,"syncStatus":"PENDING","createdAt":"2026-10-14T14:33:32.372Z","updatedAt":"2026-10-14T14:33:32.372Z"}
 ]
 ```
 
@@ -197,6 +202,7 @@ curl -X PUT http://localhost:8080/api/tasks/1 \
   "status": "IN_PROGRESS",
   "assignee": "amueller",
   "dueDate": "2026-11-15",
+  "priority": "MEDIUM",
   "source": "TASKBOARD",
   "hostId": null,
   "syncStatus": "PENDING",
@@ -312,6 +318,7 @@ The payload is a full snapshot of the task after the change; for `TASK_DELETED` 
   "assignee": "amueller",
   "dueDate": "2026-11-15",
   "source": "TASKBOARD",
+  "priority": "MEDIUM",
   "occurredAt": "2026-10-14T14:33:39.864Z"
 }
 ```
@@ -433,6 +440,8 @@ What each test class covers:
 
 | Test | What it covers |
 |---|---|
+| `TaskPriorityTest` | The priority through the API and the outbox: default `MEDIUM`, create and replace, kept when `PUT` omits it, untouched by assigning, 400 for other values without an event, the priority in every outbox payload |
+| `PriorityMigrationTest` | Flyway V3: tasks that exist before it are `MEDIUM`, the column is required |
 | `TaskApiTest` | The HTTP API: status codes, `Location`, the task's JSON, sorting, replacing and clearing fields, assigning, deleting, 404s, the validation of every field, texts stored the way the host keeps them, values of the wrong type, messages in English whatever the client's language, problem details, UTC timestamps and exact due dates in the database |
 | `TaskOutboxTest` | The outbox guarantee: one event per change with its type, `PENDING`, `0` attempts and the full snapshot, `null` for an empty text; no event for a rejected request, a rollback or a failed commit; no outbox write outside a transaction; the row lock, and a change that waited for it stamped after the change it waited for; `HOST_ID` and the processing columns left to the datasync |
 | `TaskSyncStatusTest` | The sync status as the datasync processes or fails events, the latest event deciding, a host task without events, and `GET /api/tasks` in a single SQL query |

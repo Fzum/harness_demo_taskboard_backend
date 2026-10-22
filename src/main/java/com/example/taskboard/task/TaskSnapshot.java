@@ -19,6 +19,7 @@ record TaskSnapshot(
     String assignee,
     LocalDate dueDate,
     TaskSource source,
+    TaskPriority priority,
     Instant occurredAt) {
 
   static TaskSnapshot of(Task task, Instant occurredAt) {
@@ -31,6 +32,7 @@ record TaskSnapshot(
         task.getAssignee(),
         task.getDueDate(),
         task.getSource(),
+        task.getPriority(),
         occurredAt);
   }
 }

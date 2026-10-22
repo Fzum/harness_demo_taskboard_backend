@@ -1,0 +1,2 @@
+-- PRIORITY of a task: HIGH, MEDIUM or LOW. Tasks that exist before this migration are MEDIUM.
+ALTER TABLE TASK ADD COLUMN PRIORITY VARCHAR(10) DEFAULT 'MEDIUM' NOT NULL;

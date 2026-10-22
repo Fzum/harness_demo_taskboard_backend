@@ -86,6 +86,7 @@ class TaskSyncStatusTest {
                     "ASSIGNEE", "amueller",
                     "SOURCE", "HOST",
                     "HOST_ID", "H000001001",
+                    "PRIORITY", "MEDIUM",
                     "CREATED_AT", now,
                     "UPDATED_AT", now))
             .longValue();

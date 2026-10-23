@@ -14,6 +14,7 @@ record TaskResponse(
     TaskSource source,
     String hostId,
     SyncStatus syncStatus,
+    TaskPriority priority,
     Instant createdAt,
     Instant updatedAt) {
 
@@ -28,6 +29,7 @@ record TaskResponse(
         task.getSource(),
         task.getHostId(),
         syncStatus,
+        task.getPriority(),
         task.getCreatedAt(),
         task.getUpdatedAt());
   }

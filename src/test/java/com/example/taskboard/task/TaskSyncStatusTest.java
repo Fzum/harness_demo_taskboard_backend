@@ -83,6 +83,7 @@ class TaskSyncStatusTest {
                 Map.of(
                     "TITLE", "Renew the standing order",
                     "STATUS", "OPEN",
+                    "PRIORITY", "MEDIUM",
                     "ASSIGNEE", "amueller",
                     "SOURCE", "HOST",
                     "HOST_ID", "H000001001",

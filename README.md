@@ -96,12 +96,12 @@ JSON over HTTP at `http://localhost:8080`, without authentication. The Taskboard
 |---|---|---|---|---|
 | `GET /api/tasks` | | 200, every task, sorted by id | | |
 | `GET /api/tasks/{id}` | | 200, the task | 404 | |
-| `POST /api/tasks` | `title`, optional `description`, `assignee`, `dueDate` | 201, the new task, `Location: /api/tasks/{id}` | 400 | `TASK_CREATED` |
-| `PUT /api/tasks/{id}` | `title`, `description`, `status`, `assignee`, `dueDate` | 200, the changed task | 400, 404 | `TASK_UPDATED` |
+| `POST /api/tasks` | `title`, optional `description`, `assignee`, `dueDate`, `priority` | 201, the new task, `Location: /api/tasks/{id}` | 400 | `TASK_CREATED` |
+| `PUT /api/tasks/{id}` | `title`, `description`, `status`, `assignee`, `dueDate`, optional `priority` | 200, the changed task | 400, 404 | `TASK_UPDATED` |
 | `PUT /api/tasks/{id}/assignee` | `assignee` | 200, the changed task | 400, 404 | `TASK_UPDATED` |
 | `DELETE /api/tasks/{id}` | | 204 | 404 | `TASK_DELETED` |
 
-`POST` creates an `OPEN` task with source `TASKBOARD`. `PUT /api/tasks/{id}` replaces every editable field: `null`, or a missing key, clears a field. `PUT /api/tasks/{id}/assignee` changes nothing but the assignee; `{"assignee": null}` unassigns the task. Every successful `POST`, `PUT` or `DELETE` writes exactly one outbox event; a rejected request writes none.
+`POST` creates an `OPEN` task with source `TASKBOARD`; without a `priority` (or with `null`) it is `MEDIUM`. `PUT /api/tasks/{id}` replaces every editable field: `null`, or a missing key, clears a field, except `priority`: without one (or with `null`) the task keeps its priority. `PUT /api/tasks/{id}/assignee` changes nothing but the assignee (the priority stays); `{"assignee": null}` unassigns the task. Every successful `POST`, `PUT` or `DELETE` writes exactly one outbox event; a rejected request writes none.
 
 ### The task
 
@@ -116,6 +116,7 @@ JSON over HTTP at `http://localhost:8080`, without authentication. The Taskboard
 | `source` | `TASKBOARD` or `HOST` | Created in the Taskboard or on the host |
 | `hostId` | string or `null` | The task's key on the host, set by the datasync; `null` until a new task has reached the host |
 | `syncStatus` | `SYNCED`, `PENDING` or `FAILED` | Whether the host has caught up, see [Sync status](#sync-status) |
+| `priority` | `HIGH`, `MEDIUM` or `LOW` | How urgent the task is; never `null`, tasks from before the field report `MEDIUM` |
 | `createdAt`, `updatedAt` | ISO-8601 UTC instant | For example `2026-10-14T14:33:32.302Z`. The backend stamps its changes to the millisecond; a zero fraction is left out (`2026-10-14T14:33:32Z`) |
 
 ### Validation
@@ -127,6 +128,7 @@ The limits are those of the host record, the COBOL copybook `TSKREC`, so that ev
 | `title` | Required, not blank, at most 40 characters | `TSK-TITLE PIC X(40)` |
 | `description` | At most 200 characters | `TSK-DESC PIC X(200)` |
 | `status` | `OPEN`, `IN_PROGRESS` or `DONE`; required by `PUT /api/tasks/{id}` | |
+| `priority` | Optional; `HIGH`, `MEDIUM` or `LOW`, anything else (such as `URGENT`) is a 400 | `TSK-PRIO PIC X(01)`: `H`, `M` or `L` |
 | `assignee` | `null` or a lower-case user id: a letter, then up to 7 letters or digits (`^[a-z][a-z0-9]{0,7}$`) | `TSK-USER PIC X(8)`, upper case on the host |
 | `dueDate` | `null` or an ISO date from `0001-01-01` to `9999-12-31` | `TSK-DUE-DATE PIC 9(8)`: `YYYYMMDD`, `00000000` for none |
 
@@ -263,6 +265,7 @@ Two tables in the taskboard schema, created by `V1__create_task.sql` and `V2__cr
 | `ASSIGNEE` | `VARCHAR(8)` | backend, datasync | Lower-case user id |
 | `DUE_DATE` | `DATE` | backend, datasync | Due date |
 | `SOURCE` | `VARCHAR(10) NOT NULL` | backend, datasync | `TASKBOARD` (backend) or `HOST` (datasync's ETL) |
+| `PRIORITY` | `VARCHAR(10) DEFAULT 'MEDIUM' NOT NULL` | backend, datasync | `HIGH`, `MEDIUM` or `LOW` (added by `V3__add_task_priority.sql`; existing rows became `MEDIUM`) |
 | `HOST_ID` | `VARCHAR(10)`, indexed | datasync only | The task's key on the host (`TSK-ID`): `H000001001` for a host task, `T000000042` for task 42 from the Taskboard |
 | `CREATED_AT` | `TIMESTAMP NOT NULL` | backend, datasync | Creation time |
 | `UPDATED_AT` | `TIMESTAMP NOT NULL` | backend, datasync | Time of the last change |
@@ -300,7 +303,7 @@ The backend cannot write to the host itself, and a change must reach the host ev
 | Assign, unassign | `PUT /api/tasks/{id}/assignee` | `TASK_UPDATED` |
 | Delete | `DELETE /api/tasks/{id}` | `TASK_DELETED` |
 
-The payload is a full snapshot of the task after the change; for `TASK_DELETED` it is the last state before the deletion. Every key is always present, `null` when empty, and consumers ignore keys they do not know. `occurredAt` is the time of the change, `hostId` the `TASK.HOST_ID` at that time:
+The payload is a full snapshot of the task after the change; for `TASK_DELETED` it is the last state before the deletion. Every key is always present, `null` when empty (`priority` never is: `HIGH`, `MEDIUM` or `LOW`; events written before it existed have no such key), and consumers ignore keys they do not know. `occurredAt` is the time of the change, `hostId` the `TASK.HOST_ID` at that time:
 
 ```json
 {
@@ -312,6 +315,7 @@ The payload is a full snapshot of the task after the change; for `TASK_DELETED` 
   "assignee": "amueller",
   "dueDate": "2026-11-15",
   "source": "TASKBOARD",
+  "priority": "MEDIUM",
   "occurredAt": "2026-10-14T14:33:39.864Z"
 }
 ```
@@ -433,6 +437,8 @@ What each test class covers:
 
 | Test | What it covers |
 |---|---|
+| `TaskPriorityTest` | The priority: default MEDIUM, kept by a PUT without one, invalid values as 400, the outbox payload |
+| `MigrationTest` | V3 adds PRIORITY, existing rows become MEDIUM |
 | `TaskApiTest` | The HTTP API: status codes, `Location`, the task's JSON, sorting, replacing and clearing fields, assigning, deleting, 404s, the validation of every field, texts stored the way the host keeps them, values of the wrong type, messages in English whatever the client's language, problem details, UTC timestamps and exact due dates in the database |
 | `TaskOutboxTest` | The outbox guarantee: one event per change with its type, `PENDING`, `0` attempts and the full snapshot, `null` for an empty text; no event for a rejected request, a rollback or a failed commit; no outbox write outside a transaction; the row lock, and a change that waited for it stamped after the change it waited for; `HOST_ID` and the processing columns left to the datasync |
 | `TaskSyncStatusTest` | The sync status as the datasync processes or fails events, the latest event deciding, a host task without events, and `GET /api/tasks` in a single SQL query |

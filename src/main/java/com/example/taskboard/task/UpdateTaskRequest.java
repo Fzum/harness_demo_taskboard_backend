@@ -7,7 +7,8 @@ import java.time.LocalDate;
 
 /**
  * Body of PUT /api/tasks/{id}: replaces every editable field, and null (or a missing key) clears
- * one, except for {@code priority}: without one the task keeps its priority. The texts, limits and messages are those of {@link CreateTaskRequest}.
+ * one, except for {@code priority}: without one the task keeps its priority. The texts, limits and
+ * messages are those of {@link CreateTaskRequest}.
  */
 record UpdateTaskRequest(
     @NotBlank(message = "must not be blank")

@@ -75,6 +75,7 @@ class TaskApiTest {
              "source": "TASKBOARD",
              "hostId": null,
              "syncStatus": "PENDING",
+             "priority": "MEDIUM",
              "createdAt": "%s",
              "updatedAt": "%s"}"""
                 .formatted(id, createdAt, createdAt));

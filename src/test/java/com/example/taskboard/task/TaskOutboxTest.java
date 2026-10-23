@@ -107,6 +107,7 @@ class TaskOutboxTest {
                        "assignee": "amueller",
                        "dueDate": "2026-10-31",
                        "source": "TASKBOARD",
+                       "priority": "MEDIUM",
                        "occurredAt": "%s"}"""
                           .formatted(id, createdAt));
             });
@@ -131,7 +132,7 @@ class TaskOutboxTest {
             """
             {"taskId": %d, "hostId": null, "title": "Clarify returned direct debit",
              "description": null, "status": "DONE", "assignee": "amueller", "dueDate": null,
-             "source": "TASKBOARD", "occurredAt": "%s"}"""
+             "source": "TASKBOARD", "priority": "MEDIUM", "occurredAt": "%s"}"""
                 .formatted(id, text(updated, "$.updatedAt")));
   }
 

@@ -48,6 +48,7 @@ class TaskService {
                 request.description(),
                 request.assignee(),
                 request.dueDate(),
+                request.priority(),
                 now));
     appendEvent(TaskEventType.TASK_CREATED, task, now);
     return pending(task);
@@ -62,6 +63,7 @@ class TaskService {
         request.status(),
         request.assignee(),
         request.dueDate(),
+        request.priority(),
         now);
     appendEvent(TaskEventType.TASK_UPDATED, task, now);
     return pending(task);

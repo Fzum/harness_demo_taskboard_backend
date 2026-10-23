@@ -33,6 +33,9 @@ public class Task {
   private LocalDate dueDate;
 
   @Enumerated(EnumType.STRING)
+  private TaskPriority priority;
+
+  @Enumerated(EnumType.STRING)
   @Column(updatable = false)
   private TaskSource source;
 
@@ -48,32 +51,42 @@ public class Task {
 
   /** A task created in the Taskboard: open, and unknown to the host until the datasync syncs it. */
   static Task create(
-      String title, String description, String assignee, LocalDate dueDate, Instant now) {
+      String title,
+      String description,
+      String assignee,
+      LocalDate dueDate,
+      TaskPriority priority,
+      Instant now) {
     Task task = new Task();
     task.title = title;
     task.description = description;
     task.status = TaskStatus.OPEN;
     task.assignee = assignee;
     task.dueDate = dueDate;
+    task.priority = priority == null ? TaskPriority.MEDIUM : priority;
     task.source = TaskSource.TASKBOARD;
     task.createdAt = now;
     task.updatedAt = now;
     return task;
   }
 
-  /** Replaces every editable field; null clears one. */
+  /** Replaces every editable field; null clears one, but a null priority keeps the current one. */
   void update(
       String title,
       String description,
       TaskStatus status,
       String assignee,
       LocalDate dueDate,
+      TaskPriority priority,
       Instant now) {
     this.title = title;
     this.description = description;
     this.status = status;
     this.assignee = assignee;
     this.dueDate = dueDate;
+    if (priority != null) {
+      this.priority = priority;
+    }
     this.updatedAt = now;
   }
 
@@ -105,6 +118,10 @@ public class Task {
 
   public LocalDate getDueDate() {
     return dueDate;
+  }
+
+  public TaskPriority getPriority() {
+    return priority;
   }
 
   public TaskSource getSource() {
